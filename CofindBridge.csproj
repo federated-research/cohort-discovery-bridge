@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../hutch-relay/lib/Hutch.Rackit/Hutch.Rackit.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="lib\Hutch.Rackit\bin\Debug\net10.0\Hutch.Rackit.deps.json" />
+    <_ContentIncludedByDefault Remove="lib\Hutch.Rackit\obj\Debug\net10.0\Hutch.Rackit.sourcelink.json" />
+    <_ContentIncludedByDefault Remove="lib\Hutch.Rackit\obj\Hutch.Rackit.csproj.nuget.dgspec.json" />
+    <_ContentIncludedByDefault Remove="lib\Hutch.Rackit\obj\project.assets.json" />
+    <_ContentIncludedByDefault Remove="lib\Hutch.Rackit\obj\project.packagespec.json" />
+
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="4.0.104.7" />
+  </ItemGroup>
+</Project>
