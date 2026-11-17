@@ -1,0 +1,74 @@
+# - Hutch Relay as the TASK API with its own local postgres datastore, and 2 subnodes registered
+#   - GA4GH Beacon interface enabled
+# Send Beacon requests to Relay on http://localhost:8190 and they will be fulfilled by the Bridge
+
+name: relay-demo
+
+services:
+  # Relay
+  relay_db:
+    image: postgres:16
+    networks:
+      - parent
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hutch_relay
+
+  relay_rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    # ports:
+    #   - "5672:5672"    # AMQP
+    #   - "15672:15672"  # RabbitMQ Management UI
+    networks:
+      - parent
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 30s
+      timeout: 30s
+      retries: 10
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+
+  relay:
+    # We recommend pinning to a version number for your deployment.
+    image: ghcr.io/health-informatics-uon/hutch/relay:edge
+    restart: always
+    ports:
+      - 8190:8080
+    networks:
+      - parent
+    environment:
+      # Configuration Docs: https://hutch.health/relay/config
+      DOTNET_Environment: Development
+      ConnectionStrings__Default: Server=relay_db;Port=5432;Database=hutch_relay;User Id=postgres;Password=postgres
+      Database__ApplyMigrationsOnStartup: true
+
+      RelayTaskQueue__ConnectionString: amqp://user:password@relay_rabbitmq:5672
+
+      # Declarative State Config https://hutch.health/relay/config#declarative-config
+      DownstreamUsers__tre1__Password: password
+      DownstreamUsers__tre1__Subnode: 93258ae6-472f-45d2-8cf9-8b64cbeb03c8
+      DownstreamUsers__tre2__Password: password
+      DownstreamUsers__tre2__Subnode: ca6a900c-ab49-425f-8cb3-39200729b2b3
+
+      # Query Sources
+      Beacon__Enable: true # GA4GH Beacon interface enabled for sample purposes; see additional config: https://hutch.health/relay/config#ga4gh-beacon
+      Beacon__RequestFilteringTermsOnStartup: IfEmpty
+      Beacon__SecurityAttributes__DefaultGranularity: count
+
+      # Increase Logging Verbosity for Demo
+      Serilog__MinimumLevel__Default: Information
+      Serilog__MinimumLevel__Override__Hutch: Debug
+    depends_on:
+      relay_db:
+        condition: service_started
+      relay_rabbitmq:
+        condition: service_healthy
+
+
+networks:
+  subnode1:
+  subnode2:
+  parent:
