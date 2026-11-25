@@ -38,33 +38,31 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
             _options.Collections.Count);
 
         var pollingTasks = _options.Collections.Select(
-            collection => PollCollectionAsync(
-                collection.CollectionId,
-                stoppingToken));
+            collection => PollCollectionAsync(collection, stoppingToken));
 
         await Task.WhenAll(pollingTasks);
     }
 
     private async Task PollCollectionAsync(
-        string collectionId,
+        BridgeCollectionOptions collection,
         CancellationToken stoppingToken)
     {
         _logger.LogInformation(
             "Polling for Collection: {CollectionId}",
-            collectionId);
+            collection.CollectionId);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
                 var job = await _client.FetchPendingTaskAsync(
-                    collectionId,
+                    collection.CollectionId,
                     stoppingToken);
 
                 if (job is not null)
                 {
                     await ProcessJobAsync(
-                        collectionId,
+                        collection,
                         job,
                         stoppingToken);
                 }
@@ -79,7 +77,7 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
                 _logger.LogError(
                     ex,
                     "Error polling or processing collection {CollectionId}",
-                    collectionId);
+                    collection.CollectionId);
             }
 
             try
@@ -98,21 +96,25 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
 
         _logger.LogInformation(
             "Polling stopped for collection {CollectionId}",
-            collectionId);
+            collection.CollectionId);
     }
 
     private async Task ProcessJobAsync(
-        string collectionId,
+        BridgeCollectionOptions collection,
         AvailabilityJob job,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
             "Processing availability job {Uuid} for collection {CollectionId}",
             job.Uuid,
-            collectionId);
+            collection.CollectionId);
 
         // Submit the availability task to TES API.
-        var tesTaskId = await _tesSubmissionService.SubmitAvailabilityTaskAsync(job.Uuid, cancellationToken);
+        var tesTaskId = await _tesSubmissionService.SubmitAvailabilityTaskAsync(
+            job,
+            _options.Project,
+            collection.TreName,
+            cancellationToken);
 
         _logger.LogInformation(
             "Availability job {Uuid} submitted to TES API as task {TaskId}",
@@ -121,7 +123,7 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
         // Get the child submission ID
         var childSubmissionId = await _tesSubmissionService.GetChildSubmissionIdAsync(
             int.Parse(tesTaskId),
-            _options.TreName,
+            collection.TreName,
             cancellationToken);
 
         // Wait for the submission to complete.
@@ -170,7 +172,7 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
         {
             Status = "ok",
             ProtocolVersion = job.ProtocolVersion,
-            CollectionId = collectionId,
+            CollectionId = collection.CollectionId,
             Uuid = job.Uuid,
             Results = result
         };
@@ -178,13 +180,13 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
         // Submit the result back to the Task API.
         await _client.SubmitResultAsync(
             job.Uuid,
-            collectionId,
+            collection.CollectionId,
             jobResult,
             cancellationToken);
 
         _logger.LogInformation(
             "Successfully submitted result for availability job {Uuid} to collection {CollectionId}",
             job.Uuid,
-            collectionId);
+            collection.CollectionId);
     }
 }
