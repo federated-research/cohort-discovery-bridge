@@ -4,7 +4,7 @@ public sealed class BridgeCollectionOptions
 {
     public string CollectionId { get; set; } = string.Empty;
 
-    public string TreId { get; set; } = string.Empty;
+    public string TreName { get; set; } = string.Empty;
 
     public string Username { get; set; } = string.Empty;
 
