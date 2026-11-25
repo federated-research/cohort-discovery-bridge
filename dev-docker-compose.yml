@@ -48,10 +48,12 @@ services:
       RelayTaskQueue__ConnectionString: amqp://user:password@relay_rabbitmq:5672
 
       # Declarative State Config https://hutch.health/relay/config#declarative-config
-      DownstreamUsers__tre1__Password: password
-      DownstreamUsers__tre1__Subnode: 93258ae6-472f-45d2-8cf9-8b64cbeb03c8
-      DownstreamUsers__tre2__Password: password
-      DownstreamUsers__tre2__Subnode: ca6a900c-ab49-425f-8cb3-39200729b2b3
+      # Named DEMO to match the one real TRE registered in the 5S-TES DemoStack.
+      DownstreamUsers__DEMO__Password: password
+      DownstreamUsers__DEMO__Subnode: 93258ae6-472f-45d2-8cf9-8b64cbeb03c8
+      # Second downstream user for testing multi-collection polling - uncomment if needed.
+      # DownstreamUsers__tre2__Password: password
+      # DownstreamUsers__tre2__Subnode: ca6a900c-ab49-425f-8cb3-39200729b2b3
 
       # Query Sources
       Beacon__Enable: true # GA4GH Beacon interface enabled for sample purposes; see additional config: https://hutch.health/relay/config#ga4gh-beacon
