@@ -9,6 +9,8 @@ public sealed class BridgeOptions
     public int PollIntervalSeconds { get; set; } = 20;
 
     public string CohortDiscoveryBaseUrl { get; set; } = string.Empty;
-    
+
     public string TreName { get; set; } = string.Empty;
+
+    public string Project { get; set; } = string.Empty;
 }

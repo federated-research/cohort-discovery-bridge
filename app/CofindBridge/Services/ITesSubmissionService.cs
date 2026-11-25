@@ -1,11 +1,14 @@
 using System.Text.Json;
+using Hutch.Rackit.TaskApi.Models;
 
 namespace CofindBridge.Services;
 
 public interface ITesSubmissionService
 {
     Task<string> SubmitAvailabilityTaskAsync(
-        string jobUuid,
+        AvailabilityJob job,
+        string project,
+        string treName,
         CancellationToken cancellationToken);
 
     Task<JsonDocument> WaitForCompletionAsync(

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using CofindBridge.Configuration;
+using Hutch.Rackit.TaskApi.Models;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 
@@ -34,58 +35,23 @@ public class TesSubmissionService : ITesSubmissionService
     }
 
     public async Task<string> SubmitAvailabilityTaskAsync(
-        string jobUuid,
+        AvailabilityJob job,
+        string project,
+        string treName,
         CancellationToken cancellationToken)
     {
-        // Sample payload only. Cohort translation will be added later.
-        // var cohortJson =
-        //     "{\"task_id\":\"job-2023-01-13-14:20:38-project\"," +
-        //     "\"project\":\"project_id\"," +
-        //     "\"owner\":\"user1\"," +
-        //     "\"cohort\":{\"groups\":[{\"rules\":[{" +
-        //     "\"varname\":\"OMOP\",\"varcat\":\"Person\"," +
-        //     "\"type\":\"TEXT\",\"oper\":\"=\",\"value\":\"8507\"" +
-        //     "}],\"rules_oper\":\"AND\"}]," +
-        //     "\"groups_oper\":\"OR\"}," +
-        //     "\"collection\":\"collection_id\"," +
-        //     "\"protocol_version\":\"v2\"," +
-        //     "\"char_salt\":\"salt\"," +
-        //     "\"uuid\":\"unique_id\"}";
-        // Todo: Don't use a sample query, change this to the job from the TaskAPI
-        var cohort = new
+        // Maps directly to bunny-cli's AvailabilityQuery model
+        var availabilityQuery = new
         {
-            task_id = "job-2023-01-13-14:20:38-project",
-            project = "project_id",
-            owner = "user1",
-            cohort = new
-            {
-                groups = new[]
-                {
-                    new
-                    {
-                        rules = new[]
-                        {
-                            new
-                            {
-                                varname = "OMOP",
-                                varcat = "Person",
-                                type = "TEXT",
-                                oper = "=",
-                                value = "8507"
-                            }
-                        },
-                        rules_oper = "AND"
-                    }
-                },
-                groups_oper = "OR"
-            },
-            collection = "collection_id",
-            protocol_version = "v2",
-            char_salt = "salt",
-            uuid = jobUuid
+            cohort = job.Cohort,
+            uuid = job.Uuid,
+            owner = job.Owner,
+            collection = job.Collection,
+            protocol_version = job.ProtocolVersion,
+            char_salt = job.CharSalt
         };
 
-        var cohortJson = JsonSerializer.Serialize(cohort);
+        var cohortJson = JsonSerializer.Serialize(availabilityQuery);
 
         var tesTask = new
         {
@@ -128,11 +94,10 @@ public class TesSubmissionService : ITesSubmissionService
                 }
             },
             volumes = (object?)null,
-            //Todo: Set this to the TRE mapped to the Collection - see BridgeCollectionOptions
             tags = new Dictionary<string, string>
             {
-                ["Project"] = "Testing",
-                ["tres"] = "DEMO"
+                ["Project"] = project,
+                ["tres"] = treName
             },
             logs = (object?)null,
             creation_time = (string?)null
