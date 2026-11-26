@@ -55,15 +55,27 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
         {
             try
             {
-                var job = await _client.FetchPendingTaskAsync(
+                var distributionJob = await _client.FetchPendingDistributionJobAsync(
                     collection.CollectionId,
                     stoppingToken);
 
-                if (job is not null)
+                if (distributionJob is not null)
                 {
-                    await ProcessJobAsync(
+                    await ProcessDistributionJobAsync(
                         collection,
-                        job,
+                        distributionJob,
+                        stoppingToken);
+                }
+
+                var availabilityJob = await _client.FetchPendingAvailabilityJobAsync(
+                    collection.CollectionId,
+                    stoppingToken);
+
+                if (availabilityJob is not null)
+                {
+                    await ProcessAvailabilityJobAsync(
+                        collection,
+                        availabilityJob,
                         stoppingToken);
                 }
             }
@@ -99,7 +111,7 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
             collection.CollectionId);
     }
 
-    private async Task ProcessJobAsync(
+    private async Task ProcessAvailabilityJobAsync(
         BridgeCollectionOptions collection,
         AvailabilityJob job,
         CancellationToken cancellationToken)
@@ -109,7 +121,7 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
             job.Uuid,
             collection.CollectionId);
 
-        // Submit the availability task to TES API.
+        // Submit the availability job to 5STES.
         var tesTaskId = await _tesSubmissionService.SubmitAvailabilityTaskAsync(
             job,
             _options.Project,
@@ -117,7 +129,7 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
             cancellationToken);
 
         _logger.LogInformation(
-            "Availability job {Uuid} submitted to TES API as task {TaskId}",
+            "Availability job {Uuid} submitted to 5STES as submission {SubmissionId}",
             job.Uuid,
             tesTaskId);
         // Get the child submission ID
@@ -167,7 +179,7 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
                      ?? throw new InvalidOperationException(
                          $"Could not deserialize queryResult for TES submission {childSubmissionId}.");
 
-        // Create the JobResult
+        // Create the result for the upstream job.
         var jobResult = new JobResult
         {
             Status = "ok",
@@ -177,10 +189,11 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
             Results = result
         };
 
-        // Submit the result back to the Task API.
+        // Submit the result back to the upstream API.
         await _client.SubmitResultAsync(
             job.Uuid,
             collection.CollectionId,
+            ".a",
             jobResult,
             cancellationToken);
 
@@ -188,5 +201,101 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
             "Successfully submitted result for availability job {Uuid} to collection {CollectionId}",
             job.Uuid,
             collection.CollectionId);
+    }
+
+    private async Task ProcessDistributionJobAsync(
+        BridgeCollectionOptions collection,
+        CollectionAnalysisJob job,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "Processing distribution job {Uuid} for collection {CollectionId}",
+            job.Uuid,
+            collection.CollectionId);
+
+        var tesTaskId = await _tesSubmissionService.SubmitDistributionTaskAsync(
+            job,
+            _options.Project,
+            collection.TreName,
+            cancellationToken);
+
+        var childSubmissionId = await _tesSubmissionService.GetChildSubmissionIdAsync(
+            int.Parse(tesTaskId),
+            collection.TreName,
+            cancellationToken);
+
+        using var submission = await _tesSubmissionService.WaitForCompletionAsync(
+            childSubmissionId,
+            cancellationToken);
+
+        var outputBucket = submission.RootElement
+            .GetProperty("project")
+            .GetProperty("outputBucket")
+            .GetString();
+
+        if (string.IsNullOrWhiteSpace(outputBucket))
+        {
+            throw new InvalidOperationException(
+                $"No output bucket found for TES submission {childSubmissionId}.");
+        }
+
+        using var output = await _tesSubmissionService.DownloadResultsFromS3Async(
+            childSubmissionId.ToString(),
+            outputBucket,
+            cancellationToken);
+
+        var outputResult = ParseDistributionOutput(output, childSubmissionId);
+
+        var jobResult = new JobResult
+        {
+            Status = outputResult.Status,
+            CollectionId = collection.CollectionId,
+            Uuid = job.Uuid,
+            Results = outputResult.Results,
+            Message = outputResult.Message
+        };
+
+        await _client.SubmitResultAsync(
+            job.Uuid,
+            collection.CollectionId,
+            ".b",
+            jobResult,
+            cancellationToken);
+
+        _logger.LogInformation(
+            "Successfully submitted result for distribution job {Uuid} to collection {CollectionId}",
+            job.Uuid,
+            collection.CollectionId);
+    }
+
+    private static JobResult ParseDistributionOutput(
+        JsonDocument output,
+        int childSubmissionId)
+    {
+        if (!output.RootElement.TryGetProperty("queryResult", out _))
+        {
+            throw new InvalidOperationException(
+                $"TES output for submission {childSubmissionId} does not contain queryResult.");
+        }
+
+        var outputResult = JsonSerializer.Deserialize<JobResult>(
+                               output.RootElement.GetRawText(),
+                               new JsonSerializerOptions(JsonSerializerDefaults.Web))
+                           ?? throw new InvalidOperationException(
+                               $"Could not deserialize distribution output for TES submission {childSubmissionId}.");
+
+        foreach (var file in outputResult.Results.Files)
+        {
+            if (string.IsNullOrWhiteSpace(file.FileData))
+            {
+                throw new InvalidOperationException(
+                    $"Distribution output for TES submission {childSubmissionId} " +
+                    $"contains an empty file named '{file.FileName}'.");
+            }
+
+            file.WithData(file.FileData);
+        }
+
+        return outputResult;
     }
 }

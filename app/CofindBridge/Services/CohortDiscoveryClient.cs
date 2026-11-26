@@ -58,16 +58,36 @@ public sealed class CohortDiscoveryClient : ICohortDiscoveryClient
     }
 
 
-    public async Task<AvailabilityJob?> FetchPendingTaskAsync(
+    public Task<AvailabilityJob?> FetchPendingAvailabilityJobAsync(
         string collectionId,
         CancellationToken cancellationToken)
+        => FetchPendingJobAsync<AvailabilityJob>(
+            collectionId,
+            ".a",
+            cancellationToken);
+
+    public Task<CollectionAnalysisJob?> FetchPendingDistributionJobAsync(
+        string collectionId,
+        CancellationToken cancellationToken)
+        => FetchPendingJobAsync<CollectionAnalysisJob>(
+            collectionId,
+            ".b",
+            cancellationToken);
+
+    private async Task<TJob?> FetchPendingJobAsync<TJob>(
+        string collectionId,
+        string queueSuffix,
+        CancellationToken cancellationToken)
+        where TJob : TaskApiBaseResponse
     {
         var path =
-            $"task/nextjob/{Uri.EscapeDataString(collectionId)}";
+            $"task/nextjob/{Uri.EscapeDataString(collectionId)}{queueSuffix}";
 
         _logger.LogInformation(
-            "Polling for availability jobs. Collection: {CollectionId}",
-            collectionId);
+            "Polling queue {CollectionId}{QueueSuffix} for {JobType} jobs",
+            collectionId,
+            queueSuffix,
+            typeof(TJob).Name);
 
         using var request = CreateRequest(
             HttpMethod.Get,
@@ -81,7 +101,8 @@ public sealed class CohortDiscoveryClient : ICohortDiscoveryClient
         if (response.StatusCode == HttpStatusCode.NoContent)
         {
             _logger.LogInformation(
-                "Task API returned no pending jobs for collection {CollectionId}",
+                "Task API returned no pending {JobType} jobs for collection {CollectionId}",
+                typeof(TJob).Name,
                 collectionId);
 
             return null;
@@ -111,7 +132,7 @@ public sealed class CohortDiscoveryClient : ICohortDiscoveryClient
             collectionId,
             responseBody);
 
-        var job = JsonSerializer.Deserialize<AvailabilityJob>(
+        var job = JsonSerializer.Deserialize<TJob>(
             responseBody,
             new JsonSerializerOptions
             {
@@ -121,14 +142,16 @@ public sealed class CohortDiscoveryClient : ICohortDiscoveryClient
         if (job is null)
         {
             _logger.LogWarning(
-                "Could not deserialize availability job for collection {CollectionId}",
+                "Could not deserialize {JobType} job for collection {CollectionId}",
+                typeof(TJob).Name,
                 collectionId);
 
             return null;
         }
 
         _logger.LogInformation(
-            "Successfully received job {TaskId} from collection {CollectionId}",
+            "Successfully received {JobType} job {JobId} from collection {CollectionId}",
+            typeof(TJob).Name,
             job.Uuid,
             collectionId);
 
@@ -137,14 +160,15 @@ public sealed class CohortDiscoveryClient : ICohortDiscoveryClient
 
 
     public async Task SubmitResultAsync(
-        string taskId,
+        string jobId,
         string collectionId,
+        string queueSuffix,
         JobResult result,
         CancellationToken cancellationToken)
     {
         var path =
-            $"task/result/{Uri.EscapeDataString(taskId)}/" +
-            $"{Uri.EscapeDataString(collectionId)}";
+            $"task/result/{Uri.EscapeDataString(jobId)}/" +
+            $"{Uri.EscapeDataString(collectionId + queueSuffix)}";
 
         using var request = CreateRequest(
             HttpMethod.Post,
@@ -163,8 +187,8 @@ public sealed class CohortDiscoveryClient : ICohortDiscoveryClient
         response.EnsureSuccessStatusCode();
 
         _logger.LogInformation(
-            "Result submitted for task {TaskId}, collection {CollectionId}",
-            taskId,
-            collectionId);
+            "Result submitted for job {JobId}, collection {CollectionId}",
+            jobId,
+            collectionId + queueSuffix);
     }
 }
