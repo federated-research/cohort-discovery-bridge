@@ -33,7 +33,7 @@ services:
 
   relay:
     # We recommend pinning to a version number for your deployment.
-    image: ghcr.io/health-informatics-uon/hutch/relay:edge
+    image: ghcr.io/health-informatics-uon/hutch/relay:sha-83f2dcb
     restart: always
     ports:
       - 8190:8080
@@ -46,7 +46,7 @@ services:
       Database__ApplyMigrationsOnStartup: true
 
       RelayTaskQueue__ConnectionString: amqp://user:password@relay_rabbitmq:5672
-
+      TypedQueues__Enable: true
       # Declarative State Config https://hutch.health/relay/config#declarative-config
       DownstreamUsers__DEMO__Password: password
       DownstreamUsers__DEMO__Subnode: 93258ae6-472f-45d2-8cf9-8b64cbeb03c8
