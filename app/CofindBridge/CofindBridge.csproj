@@ -4,7 +4,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <UserSecretsId>c66ce4cd-63f3-4fc0-b441-44b76c4a2688</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../lib/Hutch.Rackit/Hutch.Rackit.csproj" />
