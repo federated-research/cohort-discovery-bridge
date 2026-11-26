@@ -13,8 +13,9 @@ builder.Services
         options => options.Collections.All(c =>
             !string.IsNullOrWhiteSpace(c.CollectionId) &&
             !string.IsNullOrWhiteSpace(c.Username) &&
-            !string.IsNullOrWhiteSpace(c.Password)),
-        "Every collection must have a collection ID, username and password.")
+            !string.IsNullOrWhiteSpace(c.Password) &&
+            !string.IsNullOrWhiteSpace(c.TreName)),
+        "Every collection must have a collection ID, username, password and TRE name.")
     .Validate(
         options => !string.IsNullOrWhiteSpace(
             options.CohortDiscoveryBaseUrl),
