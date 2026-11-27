@@ -8,6 +8,8 @@ services:
   # Relay
   relay_db:
     image: postgres:16
+#    ports:
+#      - "5433:5432"
     networks:
       - parent
     environment:
@@ -17,9 +19,9 @@ services:
   relay_rabbitmq:
     image: rabbitmq:3-management
     restart: always
-    # ports:
-    #   - "5672:5672"    # AMQP
-    #   - "15672:15672"  # RabbitMQ Management UI
+#    ports:
+#      - "5673:5672"      # AMQP
+#      - "15673:15672"    # RabbitMQ Management UI
     networks:
       - parent
     healthcheck:
@@ -33,7 +35,7 @@ services:
 
   relay:
     # We recommend pinning to a version number for your deployment.
-    image: ghcr.io/health-informatics-uon/hutch/relay:edge
+    image: ghcr.io/health-informatics-uon/hutch/relay:sha-83f2dcb
     restart: always
     ports:
       - 8190:8080
@@ -46,7 +48,7 @@ services:
       Database__ApplyMigrationsOnStartup: true
 
       RelayTaskQueue__ConnectionString: amqp://user:password@relay_rabbitmq:5672
-
+      TypedQueues__Enable: true
       # Declarative State Config https://hutch.health/relay/config#declarative-config
       # Named DEMO to match the one real TRE registered in the 5S-TES DemoStack.
       DownstreamUsers__DEMO__Password: password

@@ -12,6 +12,7 @@ builder.Services
     .Validate(
         options => options.Collections.All(c =>
             !string.IsNullOrWhiteSpace(c.CollectionId) &&
+            !string.IsNullOrWhiteSpace(c.TreName) &&
             !string.IsNullOrWhiteSpace(c.Username) &&
             !string.IsNullOrWhiteSpace(c.Password) &&
             !string.IsNullOrWhiteSpace(c.TreName)),
@@ -20,6 +21,9 @@ builder.Services
         options => !string.IsNullOrWhiteSpace(
             options.CohortDiscoveryBaseUrl),
         "CohortDiscoveryBaseUrl must be configured.")
+    .Validate(
+        options => !string.IsNullOrWhiteSpace(options.Project),
+        "Project must be configured.")
     .ValidateOnStart();
 
 builder.Services.Configure<TesOptions>(

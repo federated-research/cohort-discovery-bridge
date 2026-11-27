@@ -11,6 +11,12 @@ public interface ITesSubmissionService
         string treName,
         CancellationToken cancellationToken);
 
+    Task<string> SubmitDistributionTaskAsync(
+        CollectionAnalysisJob job,
+        string project,
+        string treName,
+        CancellationToken cancellationToken);
+
     Task<JsonDocument> WaitForCompletionAsync(
         int childSubmissionId,
         CancellationToken cancellationToken);
