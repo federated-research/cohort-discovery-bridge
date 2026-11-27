@@ -4,7 +4,6 @@ using CofindBridge.Configuration;
 using Hutch.Rackit.TaskApi.Models;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
-using Hutch.Rackit.TaskApi.Models;
 
 namespace CofindBridge.Services;
 
