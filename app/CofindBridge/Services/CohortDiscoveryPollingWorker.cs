@@ -111,8 +111,11 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
             job.Uuid,
             collectionId);
 
+        var treName = GetCollection(collectionId).TreName;
+
         // Submit the availability task to TES API.
-        var tesTaskId = await _tesSubmissionService.SubmitAvailabilityTaskAsync(job.Uuid, cancellationToken);
+        var tesTaskId = await _tesSubmissionService.SubmitAvailabilityTaskAsync(job, _options.Project,
+            treName, cancellationToken);
 
         _logger.LogInformation(
             "Availability job {Uuid} submitted to TES API as task {TaskId}",
@@ -121,7 +124,7 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
         // Get the child submission ID
         var childSubmissionId = await _tesSubmissionService.GetChildSubmissionIdAsync(
             int.Parse(tesTaskId),
-            _options.TreName,
+            treName,
             cancellationToken);
 
         // Wait for the submission to complete.
@@ -186,5 +189,11 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
             "Successfully submitted result for availability job {Uuid} to collection {CollectionId}",
             job.Uuid,
             collectionId);
+    }
+
+    private BridgeCollectionOptions GetCollection(string collectionId)
+    {
+        return _options.Collections.FirstOrDefault(c => string.Equals(c.CollectionId,collectionId,StringComparison.OrdinalIgnoreCase))
+               ?? throw new InvalidOperationException($"No configuration found for collection {collectionId}.");
     }
 }
