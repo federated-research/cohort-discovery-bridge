@@ -8,6 +8,8 @@ services:
   # Relay
   relay_db:
     image: postgres:16
+#    ports:
+#      - "5433:5432"
     networks:
       - parent
     environment:
@@ -17,9 +19,9 @@ services:
   relay_rabbitmq:
     image: rabbitmq:3-management
     restart: always
-    # ports:
-    #   - "5672:5672"    # AMQP
-    #   - "15672:15672"  # RabbitMQ Management UI
+#    ports:
+#      - "5673:5672"      # AMQP
+#      - "15673:15672"    # RabbitMQ Management UI
     networks:
       - parent
     healthcheck:
