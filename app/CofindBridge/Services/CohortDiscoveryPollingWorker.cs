@@ -7,13 +7,6 @@ namespace CofindBridge.Services;
 
 public sealed class CohortDiscoveryPollingWorker : BackgroundService
 {
-    // Valid Rule.Category (varcat) values per bunny-cli's Varcat enum
-    private static readonly HashSet<string> ValidVarcats = new(StringComparer.Ordinal)
-    {
-        "Person", "Condition", "Observation", "Drug", "Measurement",
-        "Medication", "Procedure", "Specimen", "Location", "Death"
-    };
-
     private readonly ICohortDiscoveryClient _client;
     private readonly BridgeOptions _options;
     private readonly ILogger<CohortDiscoveryPollingWorker> _logger;
@@ -118,8 +111,6 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
             job.Uuid,
             collectionId);
 
-        ValidateJob(job);
-
         var treName = GetCollection(collectionId).TreName;
 
         // Submit the availability task to TES API.
@@ -204,59 +195,5 @@ public sealed class CohortDiscoveryPollingWorker : BackgroundService
     {
         return _options.Collections.FirstOrDefault(c => string.Equals(c.CollectionId,collectionId,StringComparison.OrdinalIgnoreCase))
                ?? throw new InvalidOperationException($"No configuration found for collection {collectionId}.");
-    }
-
-    // Validates the fields bunny-cli's AvailabilityQuery models require, before building a TES submission from them.
-    private static void ValidateJob(AvailabilityJob job)
-    {
-        if (string.IsNullOrWhiteSpace(job.Uuid))
-        {
-            throw new InvalidOperationException(
-                "Availability job is missing a uuid.");
-        }
-
-        if (string.IsNullOrWhiteSpace(job.Collection))
-        {
-            throw new InvalidOperationException(
-                $"Availability job {job.Uuid} is missing a collection.");
-        }
-
-        if (string.IsNullOrWhiteSpace(job.ProtocolVersion))
-        {
-            throw new InvalidOperationException(
-                $"Availability job {job.Uuid} is missing a protocol_version.");
-        }
-
-        if (string.IsNullOrWhiteSpace(job.CharSalt))
-        {
-            throw new InvalidOperationException(
-                $"Availability job {job.Uuid} is missing a char_salt.");
-        }
-
-        if (job.Cohort.Groups.Count == 0)
-        {
-            throw new InvalidOperationException(
-                $"Availability job {job.Uuid} has a cohort with no groups.");
-        }
-
-        foreach (var group in job.Cohort.Groups)
-        {
-            if (group.Rules.Count == 0)
-            {
-                throw new InvalidOperationException(
-                    $"Availability job {job.Uuid} has a cohort group with no rules.");
-            }
-
-            foreach (var rule in group.Rules)
-            {
-                if (!ValidVarcats.Contains(rule.Category))
-                {
-                    throw new InvalidOperationException(
-                        $"Availability job {job.Uuid} has a rule with invalid " +
-                        $"varcat '{rule.Category}'. Must be one of: " +
-                        $"{string.Join(", ", ValidVarcats)}.");
-                }
-            }
-        }
     }
 }
