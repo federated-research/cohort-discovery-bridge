@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Net;
 using CofindBridge.Configuration;
+using Hutch.Rackit.TaskApi.Models;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using Hutch.Rackit.TaskApi.Models;
@@ -36,46 +37,23 @@ public class TesSubmissionService : ITesSubmissionService
     }
 
     public async Task<string> SubmitAvailabilityTaskAsync(
-        AvailabilityJob availabilityJob,
+        AvailabilityJob job,
         string project,
         string treName,
         CancellationToken cancellationToken)
     {
-        // Todo: Don't use a sample query, change this to the job from the TaskAPI
-        var cohort = new
+        // Maps directly to bunny-cli's AvailabilityQuery model
+        var availabilityQuery = new
         {
-            task_id = availabilityJob.Uuid,
-            project = "project_id",
-            owner = "user1",
-            cohort = new
-            {
-                groups = new[]
-                {
-                    new
-                    {
-                        rules = new[]
-                        {
-                            new
-                            {
-                                varname = "OMOP",
-                                varcat = "Person",
-                                type = "TEXT",
-                                oper = "=",
-                                value = "8507"
-                            }
-                        },
-                        rules_oper = "AND"
-                    }
-                },
-                groups_oper = "OR"
-            },
-            collection = "collection_id",
-            protocol_version = "v2",
-            char_salt = "salt",
-            uuid = availabilityJob.Uuid
+            cohort = job.Cohort,
+            uuid = job.Uuid,
+            owner = job.Owner,
+            collection = job.Collection,
+            protocol_version = job.ProtocolVersion,
+            char_salt = job.CharSalt
         };
 
-        var cohortJson = JsonSerializer.Serialize(cohort);
+        var cohortJson = JsonSerializer.Serialize(availabilityQuery);
 
         var tesTask = new
         {

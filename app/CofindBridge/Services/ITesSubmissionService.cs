@@ -6,7 +6,7 @@ namespace CofindBridge.Services;
 public interface ITesSubmissionService
 {
     Task<string> SubmitAvailabilityTaskAsync(
-        AvailabilityJob availabilityJob,
+        AvailabilityJob job,
         string project,
         string treName,
         CancellationToken cancellationToken);
